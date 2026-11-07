@@ -1,0 +1,21 @@
+# compilado
+/dist
+/node_modules
+/build
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# testes
+/coverage
+
+# variáveis de ambiente (segredos)
+.env
+.env.*
+!.env.example
+
+# sistema e editores
+.DS_Store
+.idea/
