@@ -11,7 +11,7 @@ npm-debug.log*
 # testes
 /coverage
 
-# variáveis de ambiente (segredos)
+# variáveis de ambiente
 .env
 .env.*
 !.env.example
