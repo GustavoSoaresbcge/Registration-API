@@ -19,3 +19,5 @@ npm-debug.log*
 # sistema e editores
 .DS_Store
 .idea/
+
+*.tsbuildinfo
