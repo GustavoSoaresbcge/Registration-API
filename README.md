@@ -1,132 +1,200 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Registration API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API de cadastro de usuários em **NestJS**, escrita como a versão em NestJS do projeto Java `Microservice_Build_Environment`, mas em uma única aplicação (sem microsserviços).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> **Status:** em desenvolvimento. A API de cadastro, o banco de dados com migrations e a documentação Swagger estão prontos. A mensageria com RabbitMQ e o envio de e-mail ainda serão implementados (veja o [roadmap](#roadmap)).
 
-## Description
+## Funcionalidades
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- `POST /users` cadastra um usuário, com validação dos dados.
+- E-mail único: duplicidade retorna `409 Conflict`. O e-mail é normalizado (sem espaços e em minúsculas) antes da checagem.
+- Formato de erro padronizado para qualquer falha da API.
+- Documentação interativa com Swagger.
+- Banco PostgreSQL com schema versionado por migrations do TypeORM.
+- Infraestrutura local com Docker Compose.
 
-## Project setup
+## Tecnologias
 
-```bash
-$ npm install
+| Em uso | Para quê |
+|---|---|
+| Node.js 20.19+ (ou 22.12+) e TypeScript | Plataforma e linguagem |
+| NestJS | Framework da aplicação |
+| TypeORM + PostgreSQL 16 | Acesso a dados e migrations |
+| class-validator / class-transformer | Validação e transformação dos DTOs |
+| @nestjs/swagger | Documentação OpenAPI |
+| Docker Compose | PostgreSQL, RabbitMQ e MailHog locais |
+
+O RabbitMQ e o MailHog já sobem no Docker Compose, mas ainda não são usados pela aplicação.
+
+## Fluxo atual
+
+```mermaid
+flowchart LR
+    C[Cliente] -->|POST /users| V[ValidationPipe]
+    V --> UC[UsersController]
+    UC --> US[UsersService]
+    US --> DB[(PostgreSQL)]
+    V -. 400 .-> F[AllExceptionsFilter]
+    US -. 409 .-> F
 ```
 
-## Compile and run the project
+## Como rodar
+
+### Pré-requisitos
+
+- Node.js 20.19+ (ou 22.12+) e npm
+- Docker e Docker Compose
+
+### Passo a passo
 
 ```bash
-# development
-$ npm run start
+# 1. Clonar o repositório
+git clone https://github.com/GustavoSoaresbcge/Registration-API.git
+cd Registration-API
 
-# watch mode
-$ npm run start:dev
+# 2. Instalar as dependências
+npm install
 
-# production mode
-$ npm run start:prod
+# 3. Criar o arquivo de variáveis de ambiente
+cp .env.example .env
+
+# 4. Subir PostgreSQL, RabbitMQ e MailHog
+docker compose up -d
+
+# 5. Aplicar as migrations
+npm run migration:run
+
+# 6. Iniciar a API em modo desenvolvimento
+npm run start:dev
 ```
 
-## Run tests
+Aguarde os containers ficarem `healthy` (`docker compose ps`) antes do passo 5.
+
+### Endereços locais
+
+| Serviço | Endereço |
+|---|---|
+| API | http://localhost:3000 |
+| Swagger | http://localhost:3000/api |
+| Documento OpenAPI (JSON) | http://localhost:3000/api-json |
+| PostgreSQL | `localhost:5433` |
+| RabbitMQ (painel) | http://localhost:15672 (`guest` / `guest`) |
+| MailHog (caixa de entrada) | http://localhost:8025 |
+
+> O PostgreSQL do container é exposto na porta **5433** do host (e não na 5432) para não conflitar com uma instalação local do PostgreSQL. Dentro do Docker, ele continua na 5432.
+
+## Endpoints
+
+### `POST /users`
+
+Cadastra um novo usuário.
+
+**Requisição**
+
+```json
+{
+  "name": "Maria Silva",
+  "email": "maria@email.com"
+}
+```
+
+**Respostas**
+
+| Status | Quando |
+|---|---|
+| `201 Created` | Usuário criado |
+| `400 Bad Request` | Dados inválidos ou campos não permitidos no body |
+| `409 Conflict` | E-mail já cadastrado |
+
+**Exemplo de `201`**
+
+```json
+{
+  "id": 1,
+  "name": "Maria Silva",
+  "email": "maria@email.com",
+  "createdAt": "2026-11-09T20:07:38.989Z"
+}
+```
+
+**Formato padrão de erro**
+
+```json
+{
+  "statusCode": 409,
+  "error": "Conflict",
+  "message": ["E-mail já cadastrado"],
+  "path": "/users",
+  "timestamp": "2026-11-09T20:11:41.901Z"
+}
+```
+
+O campo `message` é sempre uma lista, porque a validação pode apontar mais de um problema de uma vez.
+
+## Banco de dados
+
+O `synchronize` do TypeORM fica **desligado**: o schema só muda por migrations versionadas em `src/database/migrations`.
+
+| Tabela | Descrição |
+|---|---|
+| `users` | `id`, `name`, `email` (único), `created_at` |
+| `email_status` | Status do envio de e-mail por usuário (`PENDING`, `SENT`, `ERROR`) e mensagem de erro. A tabela já existe, mas ainda não é usada pela aplicação |
+
+Scripts de migration:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migration:generate -- src/database/migrations/NomeDaMigration
+npm run migration:run
+npm run migration:revert
 ```
 
-## Deployment
+## Estrutura do projeto
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```
+src/
+├── common/
+│   ├── dto/          # ErrorResponseDto (formato de erro documentado no Swagger)
+│   └── filters/      # AllExceptionsFilter (filtro global de exceções)
+├── database/
+│   ├── data-source.ts   # DataSource usado pelo CLI das migrations
+│   └── migrations/
+├── mail/             # Entidade e enum do status de e-mail
+├── users/
+│   ├── dto/          # CreateUserDto, UserResponseDto
+│   ├── user.entity.ts
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   └── users.module.ts
+├── app.module.ts
+└── main.ts           # ValidationPipe, filtro global e Swagger
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Decisões de projeto
 
-## Observability
+- **Migrations em vez de `synchronize`:** o banco só muda por SQL versionado e revisável.
+- **DTO de entrada e de resposta separados da entidade:** a API não expõe a estrutura interna da tabela.
+- **`ValidationPipe` com `whitelist` e `forbidNonWhitelisted`:** campos não declarados no DTO são rejeitados com `400`.
+- **E-mail normalizado:** `Maria@Email.com` e `maria@email.com` contam como o mesmo cadastro.
+- **Constraint `UNIQUE` no banco** além da checagem no service, como garantia final contra duplicidade.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Scripts úteis
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+| Comando | O que faz |
+|---|---|
+| `npm run start:dev` | Inicia a API com recarga automática |
+| `npm run build` | Compila o projeto |
+| `npm run migration:run` | Aplica as migrations pendentes |
+| `docker compose up -d` | Sobe a infraestrutura local |
+| `docker compose down` | Para os containers (os dados do banco ficam no volume) |
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+## Roadmap
 
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- [x] Projeto base, variáveis de ambiente e fluxo de branches com Pull Requests
+- [x] Infraestrutura local com Docker Compose (PostgreSQL, RabbitMQ e MailHog, com healthchecks)
+- [x] TypeORM, entidades e primeira migration
+- [x] `POST /users` com validação, e-mail único e erros padronizados
+- [x] Documentação Swagger
+- [ ] Publicação do evento de cadastro no RabbitMQ e consumidor que envia o e-mail (Nodemailer + MailHog)
+- [ ] Testes com Jest
+- [ ] Logs e análise de falhas
+- [ ] Dockerfile multi-stage e API dentro do Docker Compose
