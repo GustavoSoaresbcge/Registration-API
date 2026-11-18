@@ -7,9 +7,8 @@ import { User } from './user.entity';
 
 @Injectable()
 export class UsersService {
-    private readonly logger = new Logger(UsersService.name);
-
-    constructor(
+  private readonly logger = new Logger(UsersService.name);
+  constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly userEventsPublisher: UserEventsPublisher,
@@ -23,13 +22,13 @@ export class UsersService {
     if (emailAlreadyExists) {
       throw new ConflictException('E-mail já cadastrado');
     }
-
+    
     const user = await this.usersRepository.save(
       this.usersRepository.create(dto),
     );
-
+    
     this.logger.log(`Usuário cadastrado (userId=${user.id})`);
-
+    
     await this.userEventsPublisher.publishUserCreated(user);
     
     return user;
